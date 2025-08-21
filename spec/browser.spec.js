@@ -17,87 +17,91 @@
     under the License.
 */
 
-const rewire = require('rewire');
-
-function expectPromise (obj) {
-    // 3 slightly different ways of verifying a promise
-    expect(typeof obj.then).toBe('function');
-    expect(obj instanceof Promise).toBe(true);
-    expect(obj).toBe(Promise.resolve(obj));
-}
-
 describe('browser', () => {
     let browser;
     beforeEach(() => {
-        browser = rewire('../src/browser');
-        browser.__set__('open', jasmine.createSpy('mockOpen'));
+        browser = require('../src/browser');
     });
 
-    it('exists and has expected properties', () => {
-        expect(browser).toBeDefined();
-        expect(typeof browser).toBe('function');
-    });
+    describe('buildBrowserVerifyCommand', () => {
+        it('should build darwin command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'darwin'
+            };
 
-    it('should return a promise', () => {
-        const result = browser();
-        expect(result).toBeDefined();
-        expectPromise(result);
+            const cmd = browser.buildBrowserVerifyCommand(opts);
+            expect(cmd).toContain('open -Ra "Google Chrome"');
+        });
 
-        return result;
-    });
+        it('should build linux command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'linux'
+            };
 
-    it('should call open() when target is `default`', () => {
-        const mockUrl = 'this is the freakin url';
+            const cmd = browser.buildBrowserVerifyCommand(opts);
+            expect(cmd).toContain('which google-chrome');
+        });
 
-        const result = browser({ target: 'default', url: mockUrl });
-        expect(result).toBeDefined();
-        expectPromise(result);
+        it('should build win32 command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'win32'
+            };
 
-        return result.then(() => {
-            expect(browser.__get__('open')).toHaveBeenCalledWith(mockUrl);
+            const cmd = browser.buildBrowserVerifyCommand(opts);
+            expect(cmd).toContain('where chrome');
         });
     });
 
-    describe('regItemPattern', () => {
-        let regItemPattern;
-        beforeEach(() => {
-            regItemPattern = browser.__get__('regItemPattern');
+    describe('buildOpenBrowserCommand', () => {
+        it('should build darwin command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'darwin'
+            };
+
+            const cmd = browser.buildOpenBrowserCommand(opts);
+            expect(cmd).toContain('open -a -n "Google Chrome" --args --user-data-dir=/tmp/temp_chrome_user_data_dir_for_cordova "https://cordova.apache.org"');
         });
 
-        const regPath = 'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.EXE';
-        const appPath = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
-        function expectPatternToExtractPathFrom (input) {
-            expect(regItemPattern.exec(input)[2]).toBe(appPath);
-        }
+        it('should build linux command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'linux'
+            };
 
-        it('should recognize browser from registry with key "Default" on English Windows 10', () => {
-            expectPatternToExtractPathFrom(`${regPath} (Default)    REG_SZ    ${appPath}`);
+            const cmd = browser.buildOpenBrowserCommand(opts);
+            expect(cmd).toContain('google-chrome "https://cordova.apache.org"');
         });
 
-        it('should recognize browser from registry with key "Standard" on non-English Windows 10', () => {
-            expectPatternToExtractPathFrom(`${regPath} (Standard)    REG_SZ    ${appPath}`);
-        });
+        it('should build win32 command to verify Chrome', async () => {
+            const opts = {
+                target: 'chrome',
+                url: 'https://cordova.apache.org',
+                dataDir: 'temp_chrome_user_data_dir_for_cordova',
+                userArgs: '',
+                _platform: 'win32'
+            };
 
-        it('should recognize browser with non-Latin registry key on Russian Windows 10', () => {
-            expectPatternToExtractPathFrom(`${regPath} (�� 㬮�砭��)    REG_SZ    ${appPath}`);
-        });
-    });
-
-    it('should append user arguments to getBrowser results', function (done) {
-        const getBrowser = browser.__get__('getBrowser');
-        const someCoolArgument = 'SOME COOL ARGUMENT';
-        const result = getBrowser(/* target */ 'chrome', /* dataDir */ null, /* userArgs */ someCoolArgument);
-        expect(result).toBeDefined();
-        expectPromise(result);
-
-        result.then((res) => {
-            const endsWithSomeCoolArgument = res.endsWith(someCoolArgument);
-            expect(endsWithSomeCoolArgument).toBe(true);
-            if (!endsWithSomeCoolArgument) {
-                done(res);
-            } else {
-                done();
-            }
+            const cmd = browser.buildOpenBrowserCommand(opts);
+            expect(cmd).toContain('start "" chrome "https://cordova.apache.org"');
         });
     });
 });
